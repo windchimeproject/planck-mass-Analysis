@@ -24,9 +24,29 @@ def signal_function(vector_delta, response_func=delta_response):
                     )
     return out
 
+@njit
+def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
+    '''generate evenly spaced alpha0 and alpha1 vectors.
+    phi_bin_n refers to the maximum number of phi_bins; to keep the bins evenly distributed on the
+    sphere phi bin count would decrease moving out from the equator. Velocity bins are assumed to
+    be bin EDGES, in SI units.
 
-def generate_alphas():
-    '''generate evenly spaced alpha0 and alpha1 vectors. (Even on 4D cylinder)'''
+    Vectors are generated as a list, assuming entry time is zero.
+    '''
+    points_on_sphere = []
+    velocity_bin_centres = velocity_bins[:-1] + np.diff(velocity_bins)/2
+    theta_bins = np.linspace(0, np.pi, theta_bin_n+1)
+    theta_bin_centres = theta_bins[:-1] + np.diff(theta_bins)/2
+    for t in theta_bin_centres:
+        phi_bin_n_cur = int(np.round(phi_bin_n/np.sin(t)))
+        phi_bins = np.linspace(0, 2*np.pi, phi_bin_n_cur+1)
+        phi_bins_centres = phi_bins[:-1] + np.diff(phi_bins)/2
+        for p in phi_bins_centres:
+            points_on_sphere.append([radius*np.sin(t)*np.cos(p),
+                                     radius*np.sin(t)*np.sin(p),
+                                     radius*np.cos(t)
+                                    ])
+
 
 
 def transform(data,):
