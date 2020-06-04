@@ -14,14 +14,14 @@ def delta_response(delta_t):
 @njit
 def signal_function(vector_delta, response_func=delta_response):
     '''signal template function. Should take into account response function!
-    vector_delta.shape == (4,n), for n inputs.
+    vector_delta.shape == (n, 3), for n inputs.
     '''
-    out = np.zeros((3, vector_delta.shape[1]))
-    for i in range(vector_delta.shape[1]):
-        denom = (vector_delta[1, i]**2 + vector_delta[2, i]**2 + vector_delta[3, i]**2)**(3/2)
-        out[0, i] = (response_func(vector_delta[0, i]) *
-                     vector_delta[1, i]/denom
-                    )
+    out = np.zeros((vector_delta.shape[0], 3))
+    for i in range(vector_delta.shape[0]):
+        denom = (vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2)
+        out[i, 0] = (response_func(vector_delta[i, 3]) * vector_delta[0, i]/denom)
+        out[i, 1] = (response_func(vector_delta[i, 3]) * vector_delta[1, i]/denom)
+        out[i, 2] = (response_func(vector_delta[i, 3]) * vector_delta[2, i]/denom)
     return out
 
 @njit
@@ -37,20 +37,144 @@ def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
     velocity_bin_centres = velocity_bins[:-1] + np.diff(velocity_bins)/2
     theta_bins = np.linspace(0, np.pi, theta_bin_n+1)
     theta_bin_centres = theta_bins[:-1] + np.diff(theta_bins)/2
-    for t in theta_bin_centres:
-        phi_bin_n_cur = int(np.round(phi_bin_n/np.sin(t)))
+    for theta in theta_bin_centres:
+        phi_bin_n_cur = int(np.round(phi_bin_n/np.sin(theta)))
         phi_bins = np.linspace(0, 2*np.pi, phi_bin_n_cur+1)
         phi_bins_centres = phi_bins[:-1] + np.diff(phi_bins)/2
-        for p in phi_bins_centres:
-            points_on_sphere.append([radius*np.sin(t)*np.cos(p),
-                                     radius*np.sin(t)*np.sin(p),
-                                     radius*np.cos(t)
+        for phi in phi_bins_centres:
+            points_on_sphere.append([radius*np.sin(theta)*np.cos(phi),
+                                     radius*np.sin(theta)*np.sin(phi),
+                                     radius*np.cos(theta)
                                     ])
+    out = []
+    points_on_sphere2 = points_on_sphere.copy()
+    for point in points_on_sphere:
+        for point2 in points_on_sphere2:
+            for vel in velocity_bin_centres:
+                x_0 = point[0]
+                y_0 = point[1]
+                z_0 = point[2]
+                x_1 = point2[0]
+                y_1 = point2[1]
+                z_1 = point2[2]
+                length = np.sqrt(
+                    (x_1-x_0)**2 +
+                    (y_1-y_0)**2 +
+                    (z_1-z_0)**2
+                )
+                out.append([
+                    x_0,
+                    y_0,
+                    z_0,
+                    0,
+                    x_1,
+                    y_1,
+                    z_1,
+                    length/vel,
+                ])
+    return np.array(out)
 
+@njit
+def adc_readout_to_accel(data, lookup_dict):
+    '''converts adc values to accelerations'''
+    out = np.zeros(data.shape)
+    for i, row in enumerate(data):
+        for j, value in enumerate(row):
+            out[i, j] = lookup_dict[value]
+    return out
 
-
-def transform(data,):
+def transform(times, accels, timesteps, timestep_indices, alphas, sensor_dict, response_length=2):
     '''Takes time series data as an input and generates a signal value based on
     entry and exit 4-vectors on a sphere extended in time. Returns the signal
     value and 4-vectors. Refer to Qin's note for a much more detailed
-    explanation.'''
+    explanation.
+
+    accels is a dict, where the key is an identifying ID for each sensor, and the value is 
+    the position, and the value is an nx3 array, where n is the length of the times array.
+    
+    sensor_dict is a dict where the key is an identifying ID for each sensor, and the value is 
+    the position.
+    '''
+    S = []
+    S_norm = []
+    alpha0_x = []
+    alpha0_y = []
+    alpha0_z = []
+    alpha0_t = []
+    alpha1_x = []
+    alpha1_y = []
+    alpha1_z = []
+    alpha1_t = []
+    adc_timestep_size = times[1] - times[0]
+    for i,start_time in enumerate(timesteps[:-1]):
+        for alpha_pair in alphas:
+            start_index = timestep_indices[i]
+            dir_vector = np.array([
+                alpha_pair[4] - alpha_pair[0],
+                alpha_pair[5] - alpha_pair[1],
+                alpha_pair[6] - alpha_pair[2],
+            ])
+            initial_pos = np.array([alpha_pair[0], alpha_pair[1], alpha_pair[2]])
+            dir_vector_step = dir_vector/(alpha_pair[7] - alpha_pair[3]) * adc_timestep_size
+            n_steps = int(np.ceil((alpha_pair[7] - alpha_pair[3])/adc_timestep_size))
+            particle_pos_arr = np.array(
+                [initial_pos + j*dir_vector_step for j in range(n_steps+response_length-1)]
+            )
+            track_times = np.array(
+                [start_time + j*adc_timestep_size for j in range(n_steps+response_length-1)]
+            )
+            track_indices = np.array(
+                [start_index + j for j in range(n_steps+response_length-1)]
+            )
+            S_this_track = 0
+            for j in range(n_steps):
+                for key in sensor_dict:
+                    sensor_pos = sensor_dict[key]
+                    vector_delta = np.zeros((response_length, 4))
+                    for k in range(response_length):
+                        vector_delta[0, k] = (particle_pos_arr[j - k + response_length - 1][0] -
+                                              sensor_pos[0])
+                        vector_delta[1, k] = (particle_pos_arr[j - k + response_length - 1][1] -
+                                              sensor_pos[1])
+                        vector_delta[2, k] = (particle_pos_arr[j - k + response_length - 1][2] -
+                                              sensor_pos[2])
+                        vector_delta[3, k] = (track_times[j - k + response_length - 1] -
+                                              track_times[j + response_length - 1])
+                    expected_signal_from_sensor = signal_function(vector_delta)
+                    signal_from_sensor = accels[key][j:j+response_length]
+                    S_this_track += np.einsum(
+                        'ij,ij->',expected_signal_from_sensor,signal_from_sensor
+                    )
+            S.append(S_this_track)
+            S_norm.append(S_this_track/n_steps)
+            alpha0_x.append(alpha_pair[0])
+            alpha0_y.append(alpha_pair[1])
+            alpha0_z.append(alpha_pair[2])
+            alpha0_t.append(alpha_pair[3])
+            alpha1_x.append(alpha_pair[4])
+            alpha1_y.append(alpha_pair[5])
+            alpha1_z.append(alpha_pair[6])
+            alpha1_t.append(alpha_pair[7])
+    structured_array = np.zeros(len(S), dtype=[
+        ('S', 'f8'),
+        ('S_norm', 'f8'),
+        ('alpha0_x', 'f8'),
+        ('alpha0_y', 'f8'),
+        ('alpha0_z', 'f8'),
+        ('alpha0_t', 'f8'),
+        ('alpha1_x', 'f8'),
+        ('alpha1_y', 'f8'),
+        ('alpha1_z', 'f8'),
+        ('alpha1_t', 'f8'),
+    ])
+    structured_array['S'] = S
+    structured_array['S_norm'] = S_norm
+    structured_array['alpha0_x'] = alpha0_x
+    structured_array['alpha0_y'] = alpha0_y
+    structured_array['alpha0_z'] = alpha0_z
+    structured_array['alpha0_t'] = alpha0_t
+    structured_array['alpha1_x'] = alpha1_x
+    structured_array['alpha1_y'] = alpha1_y
+    structured_array['alpha1_z'] = alpha1_z
+    structured_array['alpha1_t'] = alpha1_t
+    return structured_array
