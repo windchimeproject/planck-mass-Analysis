@@ -1,6 +1,7 @@
 '''integral transform module.'''
 from numba import njit
 import numpy as np
+from tqdm import tqdm, trange
 
 @njit
 def delta_response(delta_t):
@@ -83,17 +84,16 @@ def adc_readout_to_accel(data, lookup_dict):
             out[i, j] = lookup_dict[value]
     return out
 
-def transform(times, accels, timesteps, timestep_indices, alphas, sensor_dict, response_length=2):
+
+def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, response_length=2):
     '''Takes time series data as an input and generates a signal value based on
     entry and exit 4-vectors on a sphere extended in time. Returns the signal
     value and 4-vectors. Refer to Qin's note for a much more detailed
     explanation.
 
-    accels is a dict, where the key is an identifying ID for each sensor, and the value is 
-    the position, and the value is an nx3 array, where n is the length of the times array.
+    accels is a list of accelerations.
     
-    sensor_dict is a dict where the key is an identifying ID for each sensor, and the value is 
-    the position.
+    sensor_dict is a list of sensor positions, in the same order as accels.
     '''
     S = []
     S_norm = []
@@ -107,7 +107,8 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensor_dict, r
     alpha1_t = []
     adc_timestep_size = times[1] - times[0]
     for i,start_time in enumerate(timesteps[:-1]):
-        for alpha_pair in alphas:
+        for alpha_index in trange(alphas.shape[0]):
+            alpha_pair = alphas[alpha_index,:]
             start_index = timestep_indices[i]
             dir_vector = np.array([
                 alpha_pair[4] - alpha_pair[0],
@@ -123,30 +124,32 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensor_dict, r
             track_times = np.array(
                 [start_time + j*adc_timestep_size for j in range(n_steps+response_length-1)]
             )
-            track_indices = np.array(
-                [start_index + j for j in range(n_steps+response_length-1)]
-            )
+            # track_indices = np.array(
+            #     [start_index + j for j in range(n_steps+response_length-1)]
+            # )
             S_this_track = 0
             for j in range(n_steps):
-                for key in sensor_dict:
-                    sensor_pos = sensor_dict[key]
+                for sens_num, sensor_pos in enumerate(sensors_pos):
                     vector_delta = np.zeros((response_length, 4))
                     for k in range(response_length):
-                        vector_delta[0, k] = (particle_pos_arr[j - k + response_length - 1][0] -
+                        vector_delta[k, 0] = (particle_pos_arr[j - k + response_length - 1][0] -
                                               sensor_pos[0])
-                        vector_delta[1, k] = (particle_pos_arr[j - k + response_length - 1][1] -
+                        vector_delta[k, 1] = (particle_pos_arr[j - k + response_length - 1][1] -
                                               sensor_pos[1])
-                        vector_delta[2, k] = (particle_pos_arr[j - k + response_length - 1][2] -
+                        vector_delta[k, 2] = (particle_pos_arr[j - k + response_length - 1][2] -
                                               sensor_pos[2])
-                        vector_delta[3, k] = (track_times[j - k + response_length - 1] -
+                        vector_delta[k, 3] = (track_times[j - k + response_length - 1] -
                                               track_times[j + response_length - 1])
                     expected_signal_from_sensor = signal_function(vector_delta)
-                    signal_from_sensor = accels[key][j:j+response_length]
+                    signal_from_sensor = accels[sens_num][j:j+response_length]
                     S_this_track += np.einsum(
                         'ij,ij->',expected_signal_from_sensor,signal_from_sensor
                     )
             S.append(S_this_track)
-            S_norm.append(S_this_track/n_steps)
+            if n_steps > 0:
+                S_norm.append(S_this_track/n_steps)
+            else:
+                S_norm.append(0)
             alpha0_x.append(alpha_pair[0])
             alpha0_y.append(alpha_pair[1])
             alpha0_z.append(alpha_pair[2])
