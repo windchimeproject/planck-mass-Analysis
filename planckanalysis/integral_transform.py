@@ -63,16 +63,17 @@ def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
                     (y_1-y_0)**2 +
                     (z_1-z_0)**2
                 )
-                out.append([
-                    x_0,
-                    y_0,
-                    z_0,
-                    0,
-                    x_1,
-                    y_1,
-                    z_1,
-                    length/vel,
-                ])
+                if length > 0:
+                    out.append([
+                        x_0,
+                        y_0,
+                        z_0,
+                        0,
+                        x_1,
+                        y_1,
+                        z_1,
+                        length/vel,
+                    ])
     return np.array(out)
 
 @njit
