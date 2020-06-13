@@ -13,13 +13,14 @@ def delta_response(delta_t):
     return 0
 
 @njit
-def signal_function(vector_delta, response_func=delta_response):
+def signal_function(vector_delta, response_func=delta_response, sensor_radius=1e-3):
     '''signal template function. Should take into account response function!
     vector_delta.shape == (n, 3), for n inputs.
     '''
     out = np.zeros((vector_delta.shape[0], 3))
     for i in range(vector_delta.shape[0]):
-        denom = (vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2)
+        denom = min([(vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2),
+                     sensor_radius**3])
         out[i, 0] = (response_func(vector_delta[i, 3]) * vector_delta[0, i]/denom)
         out[i, 1] = (response_func(vector_delta[i, 3]) * vector_delta[1, i]/denom)
         out[i, 2] = (response_func(vector_delta[i, 3]) * vector_delta[2, i]/denom)
