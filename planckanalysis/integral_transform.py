@@ -19,7 +19,7 @@ def signal_function(vector_delta, response_func=delta_response, sensor_radius=1e
     '''
     out = np.zeros((vector_delta.shape[0], 3))
     for i in range(vector_delta.shape[0]):
-        denom = min([(vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2),
+        denom = max([(vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2),
                      sensor_radius**3])
         out[i, 0] = (response_func(vector_delta[i, 3]) * vector_delta[0, i]/denom)
         out[i, 1] = (response_func(vector_delta[i, 3]) * vector_delta[1, i]/denom)
