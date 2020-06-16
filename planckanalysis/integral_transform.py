@@ -40,7 +40,7 @@ def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
     theta_bins = np.linspace(0, np.pi, theta_bin_n+1)
     theta_bin_centres = theta_bins[:-1] + np.diff(theta_bins)/2
     for theta in theta_bin_centres:
-        phi_bin_n_cur = int(np.round(phi_bin_n/np.sin(theta)))
+        phi_bin_n_cur = int(np.round(phi_bin_n*np.sin(theta)))
         phi_bins = np.linspace(0, 2*np.pi, phi_bin_n_cur+1)
         phi_bins_centres = phi_bins[:-1] + np.diff(phi_bins)/2
         for phi in phi_bins_centres:
