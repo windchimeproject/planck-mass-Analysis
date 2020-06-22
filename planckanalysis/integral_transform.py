@@ -91,7 +91,7 @@ def generate_adc_lookup_table(acceleration_bin_edges):
     lookup_dict[65535] = float("inf")
     return lookup_dict
 
-@njit
+
 def adc_readout_to_accel(data, lookup_dict):
     '''converts adc values to accelerations'''
     out = np.zeros(data.shape)
