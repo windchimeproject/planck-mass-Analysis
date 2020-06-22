@@ -1,4 +1,5 @@
 '''integral transform module.'''
+import json
 from numba import njit
 import numpy as np
 from tqdm import tqdm, trange
@@ -77,7 +78,20 @@ def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
                     ])
     return np.array(out)
 
-@njit
+def generate_adc_lookup_table(acceleration_bin_edges):
+    '''Takes on an array of acceleration bin edges in order to create a dictionary with 
+    keys composed of ADC numbers and values of average accleration 
+    '''
+    i = 1
+    lookup_dict = {}
+    lookup_dict[0] = float("-inf")
+    for s in range (0,len(acceleration_bin_edges)-1):
+        lookup_dict[i] = (acceleration_bin_edges[s]+acceleration_bin_edges[s+1])/2
+        i += 1
+    lookup_dict[65535] = float("inf")
+    return lookup_dict
+
+
 def adc_readout_to_accel(data, lookup_dict):
     '''converts adc values to accelerations'''
     out = np.zeros(data.shape)
