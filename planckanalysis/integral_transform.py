@@ -119,7 +119,8 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
             ])
             initial_pos = np.array([alpha_pair[0], alpha_pair[1], alpha_pair[2]])
             dir_vector_step = dir_vector/(alpha_pair[7] - alpha_pair[3]) * adc_timestep_size
-            n_steps = int(np.ceil((alpha_pair[7] - alpha_pair[3])/adc_timestep_size))
+            n_steps = min(int(np.ceil((alpha_pair[7] - alpha_pair[3])/adc_timestep_size)),
+                          len(times[times > start_time])-response_length)
             particle_pos_arr = np.array(
                 [initial_pos + j*dir_vector_step for j in range(n_steps+response_length-1)]
             )
@@ -155,11 +156,11 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
             alpha0_x.append(alpha_pair[0])
             alpha0_y.append(alpha_pair[1])
             alpha0_z.append(alpha_pair[2])
-            alpha0_t.append(alpha_pair[3])
+            alpha0_t.append(alpha_pair[3] + start_time)
             alpha1_x.append(alpha_pair[4])
             alpha1_y.append(alpha_pair[5])
             alpha1_z.append(alpha_pair[6])
-            alpha1_t.append(alpha_pair[7])
+            alpha1_t.append(alpha_pair[7] + start_time)
     structured_array = np.zeros(len(S), dtype=[
         ('S', 'f8'),
         ('S_norm', 'f8'),
