@@ -79,8 +79,8 @@ def generate_alphas(velocity_bins, theta_bin_n, phi_bin_n, radius):
     return np.array(out)
 
 def generate_adc_lookup_table(acceleration_bin_edges):
-    '''Takes on an array of acceleration bin edges in order to create a dictionary with 
-    keys composed of ADC numbers and values of average accleration 
+    '''Takes on an array of acceleration bin edges in order to create a dictionary with
+    keys composed of ADC numbers and values of average acceleration
     '''
     i = 1
     lookup_dict = {}
@@ -92,7 +92,7 @@ def generate_adc_lookup_table(acceleration_bin_edges):
     return lookup_dict
 
 
-def adc_readout_to_accel(data, lookup_dict,sensitivity=1):
+def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     '''converts adc values to accelerations'''
     out = np.zeros(data.shape)
     for i, row in enumerate(data):
