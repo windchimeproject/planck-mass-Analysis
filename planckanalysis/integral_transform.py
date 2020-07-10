@@ -22,9 +22,9 @@ def signal_function(vector_delta, response_func=delta_response, sensor_radius=1e
     for i in range(vector_delta.shape[0]):
         denom = max([(vector_delta[i, 0]**2 + vector_delta[i, 1]**2 + vector_delta[i, 2]**2)**(3/2),
                      sensor_radius**3])
-        out[i, 0] = (response_func(vector_delta[i, 3]) * vector_delta[0, i]/denom)
-        out[i, 1] = (response_func(vector_delta[i, 3]) * vector_delta[1, i]/denom)
-        out[i, 2] = (response_func(vector_delta[i, 3]) * vector_delta[2, i]/denom)
+        out[i, 0] = (response_func(vector_delta[i, 3]) * vector_delta[i, 0]/denom)
+        out[i, 1] = (response_func(vector_delta[i, 3]) * vector_delta[i, 1]/denom)
+        out[i, 2] = (response_func(vector_delta[i, 3]) * vector_delta[i, 2]/denom)
     return out
 
 @njit
@@ -121,9 +121,10 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     alpha1_y = []
     alpha1_z = []
     alpha1_t = []
+    steps = []
     adc_timestep_size = times[1] - times[0]
-    for i,start_time in enumerate(timesteps[:-1]):
-        for alpha_index in trange(alphas.shape[0]):
+    for i,start_time in enumerate(tqdm(timesteps)):
+        for alpha_index in range(alphas.shape[0]):
             alpha_pair = alphas[alpha_index,:]
             start_index = timestep_indices[i]
             dir_vector = np.array([
@@ -158,10 +159,11 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
                         vector_delta[k, 3] = (track_times[j - k + response_length - 1] -
                                               track_times[j + response_length - 1])
                     expected_signal_from_sensor = signal_function(vector_delta)
-                    signal_from_sensor = accels[sens_num][j:j+response_length]
+                    signal_from_sensor = accels[sens_num][start_index + j:start_index + j+response_length]
                     S_this_track += np.einsum(
-                        'ij,ij->',expected_signal_from_sensor,signal_from_sensor
+                        'ij,ij->',expected_signal_from_sensor, signal_from_sensor
                     )
+                    #if start_time>=15000*1e-9: import pdb; pdb.set_trace()
             S.append(S_this_track)
             if n_steps > 0:
                 S_norm.append(S_this_track/n_steps)
@@ -175,6 +177,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
             alpha1_y.append(alpha_pair[5])
             alpha1_z.append(alpha_pair[6])
             alpha1_t.append(alpha_pair[7] + start_time)
+            steps.append(n_steps)
     structured_array = np.zeros(len(S), dtype=[
         ('S', 'f8'),
         ('S_norm', 'f8'),
@@ -186,6 +189,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
         ('alpha1_y', 'f8'),
         ('alpha1_z', 'f8'),
         ('alpha1_t', 'f8'),
+        ('steps', 'i4')
     ])
     structured_array['S'] = S
     structured_array['S_norm'] = S_norm
@@ -197,4 +201,5 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     structured_array['alpha1_y'] = alpha1_y
     structured_array['alpha1_z'] = alpha1_z
     structured_array['alpha1_t'] = alpha1_t
+    structured_array['steps'] = steps
     return structured_array
