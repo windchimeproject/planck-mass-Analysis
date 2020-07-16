@@ -122,6 +122,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     alpha1_z = []
     alpha1_t = []
     steps = []
+    e_steps = []
     adc_timestep_size = times[1] - times[0]
     for i,start_time in enumerate(tqdm(timesteps)):
         for alpha_index in range(alphas.shape[0]):
@@ -136,6 +137,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
             dir_vector_step = dir_vector/(alpha_pair[7] - alpha_pair[3]) * adc_timestep_size
             n_steps = min(int(np.ceil((alpha_pair[7] - alpha_pair[3])/adc_timestep_size)),
                           len(times[times > start_time])-response_length)
+            expected_steps = int(np.ceil((alpha_pair[7] - alpha_pair[3])/adc_timestep_size))
             particle_pos_arr = np.array(
                 [initial_pos + j*dir_vector_step for j in range(n_steps+response_length-1)]
             )
@@ -163,7 +165,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
                     S_this_track += np.einsum(
                         'ij,ij->',expected_signal_from_sensor, signal_from_sensor
                     )
-                    #if start_time>=15000*1e-9: import pdb; pdb.set_trace()
+                    if np.isnan(S_this_track): import pdb; pdb.set_trace()
             S.append(S_this_track)
             if n_steps > 0:
                 S_norm.append(S_this_track/n_steps)
@@ -178,6 +180,7 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
             alpha1_z.append(alpha_pair[6])
             alpha1_t.append(alpha_pair[7] + start_time)
             steps.append(n_steps)
+            e_steps.append(expected_steps)
     structured_array = np.zeros(len(S), dtype=[
         ('S', 'f8'),
         ('S_norm', 'f8'),
@@ -189,7 +192,8 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
         ('alpha1_y', 'f8'),
         ('alpha1_z', 'f8'),
         ('alpha1_t', 'f8'),
-        ('steps', 'i4')
+        ('steps', 'i4'),
+        ('e_steps', 'i4'),
     ])
     structured_array['S'] = S
     structured_array['S_norm'] = S_norm
@@ -202,4 +206,5 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     structured_array['alpha1_z'] = alpha1_z
     structured_array['alpha1_t'] = alpha1_t
     structured_array['steps'] = steps
+    structured_array['e_steps'] = e_steps
     return structured_array
