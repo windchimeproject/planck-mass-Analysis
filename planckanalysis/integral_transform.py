@@ -101,7 +101,9 @@ def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     return out
 
 
-def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, response_length=2):
+def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, response_length=2,
+    progress=True, max_accel=1, min_accel=-1
+):
     '''Takes time series data as an input and generates a signal value based on
     entry and exit 4-vectors on a sphere extended in time. Returns the signal
     value and 4-vectors. Refer to Qin's note for a much more detailed
@@ -111,6 +113,8 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     
     sensor_dict is a list of sensor positions, in the same order as accels.
     '''
+    accels = np.where(accels > max_accel, max_accel, accels)
+    accels = np.where(accels < min_accel, min_accel, accels)
     S = []
     S_norm = []
     alpha0_x = []
@@ -124,7 +128,12 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     steps = []
     e_steps = []
     adc_timestep_size = times[1] - times[0]
-    for i,start_time in enumerate(tqdm(timesteps)):
+    if progress:
+        iterator = enumerate(tqdm(timesteps))
+    else:
+        iterator = enumerate(timesteps)
+    
+    for i,start_time in iterator:
         for alpha_index in range(alphas.shape[0]):
             alpha_pair = alphas[alpha_index,:]
             start_index = timestep_indices[i]
