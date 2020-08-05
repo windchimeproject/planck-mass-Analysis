@@ -113,8 +113,9 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
     
     sensor_dict is a list of sensor positions, in the same order as accels.
     '''
-    accels = np.where(accels > max_accel, max_accel, accels)
-    accels = np.where(accels < min_accel, min_accel, accels)
+    for accel in accels:
+        accel = np.where(accel > max_accel, max_accel, accel)
+        accel = np.where(accel < min_accel, min_accel, accel)
     S = []
     S_norm = []
     alpha0_x = []
