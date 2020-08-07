@@ -84,11 +84,11 @@ def generate_adc_lookup_table(acceleration_bin_edges):
     '''
     i = 1
     lookup_dict = {}
-    lookup_dict[0] = float("-inf")
     for s in range (0,len(acceleration_bin_edges)-1):
         lookup_dict[i] = (acceleration_bin_edges[s]+acceleration_bin_edges[s+1])/2
         i += 1
-    lookup_dict[65535] = float("inf")
+    lookup_dict[0] = acceleration_bin_edges[0]
+    lookup_dict[65535] = acceleration_bin_edges[-1]
     return lookup_dict
 
 
