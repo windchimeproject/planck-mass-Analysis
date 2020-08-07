@@ -175,7 +175,10 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, r
                     S_this_track += np.einsum(
                         'ij,ij->',expected_signal_from_sensor, signal_from_sensor
                     )
-                    if np.isnan(S_this_track): import pdb; pdb.set_trace()
+                    if np.isnan(S_this_track): 
+                        print(expected_signal_from_sensor)
+                        print(signal_from_sensor)
+                        import pdb; pdb.set_trace()
             S.append(S_this_track)
             if n_steps > 0:
                 S_norm.append(S_this_track/n_steps)
