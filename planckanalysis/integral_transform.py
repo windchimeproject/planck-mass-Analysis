@@ -100,11 +100,10 @@ def py_ang(v1, v2):
 
 @njit
 def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyses, alphas=[],
-                          radius=float(CONFIG['Track Generation']['BoundingSphereRadius'])):
+                          radius=5.2):
     thetas = np.linspace(0, 90, 90)
     theta_cos_val = []
     vel_p = vel
-    alphas = []
     alpharange = []
     alpha1 = exit_vecs - entry_vecs
     alpha = np.array([alpha1[0][0], alpha1[1][0], alpha1[2][0]])  # redefine/restructure alpha
