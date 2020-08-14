@@ -2,10 +2,10 @@
 import json
 from numba import njit
 import numpy as np
+from scipy import signal
 from tqdm import tqdm, trange
 
 
-@njit
 def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-4):
     '''signal template function. Should take into account response function!
     vector_delta.shape == (n, 3), for n inputs.
@@ -25,8 +25,7 @@ def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-
 
     return convolved_signal
 
-@njit
-def Time_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyses, alphas=[]):
+def Time_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alphas=[]):
     velocity = vel
 
     for vel_p in velocity:
@@ -52,12 +51,10 @@ def Time_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyse
             length / vel_p,
         ])
 
-    N_Analyses += 1
     return alphas
 
 
-@njit
-def Velocity_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyses, alphas=[]):
+def Velocity_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alphas=[]):
     velocity_bins = np.linspace(1e5, 7e5, 250)
     velocity_bin_centres = velocity_bins[:-1] + np.diff(velocity_bins) / 2
 
@@ -84,11 +81,9 @@ def Velocity_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Ana
             length / vel_p,
         ])
 
-    N_Analyses += 1
     return alphas
 
 
-@njit
 def py_ang(v1, v2):
     # Returns the angle in radians between vectors 'v1' and 'v2'
     cosdata = np.dot(v1, v2)
@@ -98,8 +93,7 @@ def py_ang(v1, v2):
     return cosang
 
 
-@njit
-def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyses, alphas=[],
+def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alphas=[],
                           radius=5.2):
     thetas = np.linspace(0, 90, 90)
     theta_cos_val = []
@@ -145,11 +139,9 @@ def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_A
         costheta = py_ang(alphaprime.T, alpha.T)
         theta_cos_val.append(costheta)
 
-    N_Analyses += 1
     return alphas, theta_cos_val
 
 
-@njit
 def generate_adc_lookup_table(acceleration_bin_edges):
     '''Takes on an array of acceleration bin edges in order to create a dictionary with
     keys composed of ADC numbers and values of average acceleration
@@ -164,7 +156,6 @@ def generate_adc_lookup_table(acceleration_bin_edges):
     return lookup_dict
 
 
-@njit
 def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     '''converts adc values to accelerations'''
     out = np.zeros(data.shape)
@@ -174,7 +165,6 @@ def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     return out
 
 
-@njit
 def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, lin_resp):
     '''Takes time series data as an input and generates a signal value based on
     entry and exit 4-vectors on a sphere extended in time. Returns the signal
