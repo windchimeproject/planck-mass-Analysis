@@ -25,7 +25,6 @@ def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-
 
     return convolved_signal
 
-
 @njit
 def Time_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, N_Analyses, alphas=[]):
     velocity = vel
