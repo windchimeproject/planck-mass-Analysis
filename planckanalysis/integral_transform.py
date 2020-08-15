@@ -107,8 +107,8 @@ def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alp
         y_0 = entry_vecs[1]
         z_0 = entry_vecs[2]
 
-        vec = np.random.randn(ndim, n_vecs)
-        coordinates /= np.linalg.norm(vec, axis=0)
+        vec = np.random.randn(3, 1)
+        coordinates = vec / np.linalg.norm(vec, axis=0)
 
         x_1 = coordinates[0][0] * radius
         y_1 = coordinates[1][0] * radius
