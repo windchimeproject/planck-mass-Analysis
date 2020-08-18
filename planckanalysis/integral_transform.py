@@ -18,9 +18,9 @@ def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-
     out[:, 1] = (vector_delta[:, 1] / denoms)
     out[:, 2] = (vector_delta[:, 2] / denoms)
 
-    convolved_list.append(signal.convolve(out.T[0], lin_resp, mode='full'))
-    convolved_list.append(signal.convolve(out.T[1], lin_resp, mode='full'))
-    convolved_list.append(signal.convolve(out.T[2], lin_resp, mode='full'))
+    convolved_list.append(signal.convolve(out[:, 0], lin_resp, mode='full'))
+    convolved_list.append(signal.convolve(out[:, 1], lin_resp, mode='full'))
+    convolved_list.append(signal.convolve(out[:, 2], lin_resp, mode='full'))
     convolved_signal = np.array(convolved_list).T
 
     return convolved_signal
@@ -57,8 +57,8 @@ def Time_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alph
 def Velocity_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alphas=[]):
     velocity_bins = np.linspace(1e5, 7e5, 250)
     velocity_bin_centres = velocity_bins[:-1] + np.diff(velocity_bins) / 2
-
-    for vel_p in velocity_bin_centres:
+    alphas = np.zeros((len(velocity_bin_centres), 8))
+    for i, vel_p in enumerate(velocity_bin_centres):
         x_0 = entry_vecs[0]
         y_0 = entry_vecs[1]
         z_0 = entry_vecs[2]
@@ -70,7 +70,7 @@ def Velocity_Analysis_alphas(entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alpha
             (y_1 - y_0) ** 2 +
             (z_1 - z_0) ** 2
         )
-        alphas.append([
+        alphas[i] = np.array([
             x_0,
             y_0,
             z_0,
