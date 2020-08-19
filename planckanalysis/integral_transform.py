@@ -6,7 +6,7 @@ from scipy import signal
 from tqdm import tqdm, trange
 
 
-def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-4):
+def signal_function(vector_delta, lin_resp, sensor_radius=1e-4):
     '''signal template function. Should take into account response function!
     vector_delta.shape == (n, 3), for n inputs.
     '''
@@ -25,7 +25,7 @@ def signal_function(vector_delta, lin_resp, adc_timestep_size, sensor_radius=1e-
 
     return convolved_signal
 
-def Time_Analysis_alphas(vel, entry_vecs, exit_vecs, n_pad_strt, n_pad_end, alphas=[]):
+def Time_Analysis_alphas(vel, entry_vecs, exit_vecs, alphas=[]):
     velocity = vel
 
     for vel_p in velocity:
@@ -188,7 +188,6 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, l
     alpha1_z = []
     alpha1_t = []
     steps = []
-    Pad_trth_arr = []
     adc_timestep_size = times[1] - times[0]
     response_length = len(lin_resp)
     for i, start_time in enumerate(tqdm(timesteps)):
