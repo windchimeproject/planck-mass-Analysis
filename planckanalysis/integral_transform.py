@@ -228,6 +228,10 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, l
                         'ij,ij->', expected_signal_from_sensor, signal_from_sensor
                     )
 
+                    #S_this_track += np.einsum(
+                    #    'ij,ij->', expected_signal_from_sensor, amp_noise[]
+                    #)
+
                     if np.any(np.isnan(S_this_track)): import pdb; pdb.set_trace()
 
                 S.append(S_this_track)
