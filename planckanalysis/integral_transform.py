@@ -95,7 +95,7 @@ def py_ang(v1, v2):
 
 
 def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, radius=5.2):
-    thetas = np.linspace(0, 90, 90)
+    thetas = np.linspace(0, 180, 90)
     theta_cos_val = []
     alpharange = []
     alpha1 = exit_vecs - entry_vecs
