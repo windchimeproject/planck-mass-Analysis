@@ -66,12 +66,12 @@ def py_ang(v1, v2):
 def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_vals=[-1, -1], exit_vals=[-1, -1],
                             N_thetas=15, N_phis_at_eq=30, epsilon=0):
     if exit_Anl == True:
-        theta_start = entry_vals[0] * 180 / np.pi
+        theta_start = [entry_vals[0] * 180 / np.pi]
     else:
         theta_start = np.linspace(0, 180, N_thetas)
 
     if entry_Anl == True:
-        theta_end = exit_vals[0] * 180 / np.pi
+        theta_end = [exit_vals[0] * 180 / np.pi]
     else:
         theta_end = np.linspace(0, 180, N_thetas)
 
