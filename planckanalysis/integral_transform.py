@@ -25,41 +25,10 @@ def signal_function(vector_delta, lin_resp, sensor_radius=1e-4):
 
     return convolved_signal
 
-def Time_Analysis_alphas(vel, entry_vecs, exit_vecs):
-    velocity = vel
-    alphas = []
 
-    for vel_p in velocity:
-        x_0 = entry_vecs[0][0]
-        y_0 = entry_vecs[1][0]
-        z_0 = entry_vecs[2][0]
-        x_1 = exit_vecs[0][0]
-        y_1 = exit_vecs[1][0]
-        z_1 = exit_vecs[2][0]
-        length = np.sqrt(
-            (x_1 - x_0) ** 2 +
-            (y_1 - y_0) ** 2 +
-            (z_1 - z_0) ** 2
-        )
-        alphas.append([
-            x_0,
-            y_0,
-            z_0,
-            0,
-            x_1,
-            y_1,
-            z_1,
-            length / vel_p,
-        ])
-
-    return alphas
-
-
-def Velocity_Analysis_alphas(entry_vecs, exit_vecs, num_bin = 250):
-    velocity_bins = np.linspace(1e5, 7e5, num_bin)
-    velocity_bin_centres = velocity_bins[:-1] + np.diff(velocity_bins) / 2
-    alphas = np.zeros((len(velocity_bin_centres), 8))
-    for i, vel_p in enumerate(velocity_bin_centres):
+def Non_Spatial_Analysis_alphas(vel, entry_vecs, exit_vecs):
+    alphas = np.zeros((len(vel), 8))
+    for i, vel_p in enumerate(tqdm(vel)):
         x_0 = entry_vecs[0]
         y_0 = entry_vecs[1]
         z_0 = entry_vecs[2]
@@ -94,55 +63,86 @@ def py_ang(v1, v2):
     return cosang
 
 
-def Theta_Analysis_alphas(vel, entry_vecs, exit_vecs, radius=5.2):
-    thetas = np.linspace(0, 180, 90)
-    theta_cos_val = []
-    alpharange = []
-    alpha1 = exit_vecs - entry_vecs
-    alpha = np.array([alpha1[0][0], alpha1[1][0], alpha1[2][0]])  # redefine/restructure alpha
+def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_vals=[-1, -1], exit_vals=[-1, -1],
+                            N_thetas=15, N_phis_at_eq=30, epsilon=0):
+    if exit_Anl == True:
+        theta_start = entry_vals[0] * 180 / np.pi
+    else:
+        theta_start = np.linspace(0, 180, N_thetas)
+
+    if entry_Anl == True:
+        theta_end = exit_vals[0] * 180 / np.pi
+    else:
+        theta_end = np.linspace(0, 180, N_thetas)
+
+    angles = []
     alphas = []
 
-    for i in thetas:
-        for vel_p in vel:
-            x_0 = entry_vecs[0]
-            y_0 = entry_vecs[1]
-            z_0 = entry_vecs[2]
+    if entry_Anl == True and any(val < 0 for val in exit_vals) == True:
+        raise ValueError(
+            "You have indicated an entry spatial analysis but have not provided the truth exit theta and phi values. Please input with the form: exit_vals=[theta_exit_truth, phi_exit_truth].")
+    if exit_Anl == True and any(val < 0 for val in entry_vals) == True:
+        raise ValueError(
+            "You have indicated an exit spatial analysis but have not provided the truth entry theta and phi values. Please input with the form: entry_vals=[theta_entry_truth, phi_entry_truth].")
 
-            vec = np.random.randn(3, 1)
-            coordinates = vec / np.linalg.norm(vec, axis=0)
+    for vel_p in tqdm(vel):
+        for theta_entry in theta_start:
+            for theta_exit in theta_end:
+                if theta_exit > theta_entry + epsilon or theta_exit < theta_entry - epsilon:
+                    # The phi calcs below are dependent on the particular thetas considered to keep the spherical uniformity of the spatial analysis consideration
+                    if exit_Anl == True:
+                        phi_start = [entry_vals[1] * 180 / np.pi]
+                    else:
+                        phi_start = np.linspace(-180, 180,
+                                                int(np.round(N_phis_at_eq * np.cos((theta_entry - 90) * np.pi / 180))))
 
-            x_1 = coordinates[0][0] * radius
-            y_1 = coordinates[1][0] * radius
-            z_1 = coordinates[2][0] * radius
-            length = np.sqrt(
-                (x_1 - x_0) ** 2 +
-                (y_1 - y_0) ** 2 +
-                (z_1 - z_0) ** 2
-            )
-            ydiff = y_1 - y_0
-            xdiff = x_1 - x_0
-            zdiff = z_1 - z_0
+                    if len(phi_start) == 0:
+                        phi_start = [0]
 
-            alphas.append([
-                x_0,
-                y_0,
-                z_0,
-                0,
-                x_1,
-                y_1,
-                z_1,
-                length / vel_p,
-            ])
+                    for phi_entry in phi_start:
+                        if entry_Anl == True:
+                            phi_end = [exit_vals[1] * 180 / np.pi]
+                        else:
+                            phi_end = np.linspace(-180, 180, int(
+                                np.round(N_phis_at_eq * np.cos((theta_entry - 90) * np.pi / 180))))
 
-            alphaprime = np.array([xdiff, ydiff, zdiff])
-            alpharange.append(alphaprime)
+                        if len(phi_end) == 0:
+                            phi_end = [0]
 
-            # costheta = np.dot(alpha, alphaprime)/(np.linalg.norm(alpha))*(np.linalg.norm(alphaprime))
-            # theta = np.arccos(costheta)
-            costheta = py_ang(alphaprime.T, alpha.T)
-            theta_cos_val.append(costheta)
+                        for phi_exit in phi_end:
+                            if phi_exit > phi_entry + epsilon or phi_exit < phi_entry - epsilon:
+                                x_0 = radius * np.sin(theta_entry * np.pi / 180) * np.cos(phi_entry * np.pi / 180)
+                                y_0 = radius * np.sin(theta_entry * np.pi / 180) * np.sin(phi_entry * np.pi / 180)
+                                z_0 = radius * np.cos(theta_entry * np.pi / 180)
 
-    return alphas, theta_cos_val
+                                x_1 = radius * np.sin(theta_exit * np.pi / 180) * np.cos(phi_exit * np.pi / 180)
+                                y_1 = radius * np.sin(theta_exit * np.pi / 180) * np.sin(phi_exit * np.pi / 180)
+                                z_1 = radius * np.cos(theta_exit * np.pi / 180)
+
+                                length = np.sqrt(
+                                    (x_1 - x_0) ** 2 +
+                                    (y_1 - y_0) ** 2 +
+                                    (z_1 - z_0) ** 2
+                                )
+
+                                alphas.append([
+                                    x_0,
+                                    y_0,
+                                    z_0,
+                                    0,
+                                    x_1,
+                                    y_1,
+                                    z_1,
+                                    length / vel_p
+                                ])
+
+                                angles.append([
+                                    theta_entry * np.pi / 180,
+                                    theta_exit * np.pi / 180,
+                                    phi_entry * np.pi / 180,
+                                    phi_exit * np.pi / 180
+                                ])
+    return np.array(alphas), np.array(angles)
 
 
 def generate_adc_lookup_table(acceleration_bin_edges):
@@ -168,7 +168,7 @@ def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     return out
 
 
-def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, lin_resp):
+def transform(times, accels, start_times, start_time_indices, alphas, sensors_pos, lin_resp):
     '''Takes time series data as an input and generates a signal value based on
     entry and exit 4-vectors on a sphere extended in time. Returns the signal
     value and 4-vectors. Refer to Qin's note for a much more detailed
@@ -178,6 +178,15 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, l
 
     sensor_dict is a list of sensor positions, in the same order as accels.
     '''
+
+    '''The output of this conjoined integral transform function is the S value, not the SNR.
+    And this value cannot be transformed into the SNR trivially. This is because of how the
+    function is set up and how the expected signal from the sensor is generated. Here, for
+    every sensor, an expected signal is generated, analyzed with the data, then discarded.
+    The result of each run is added continously and the final value is the S, but each
+    expected signal has been lost and cannot be used for the SNR calculation (see the
+    separated integral transform for comparison).'''
+
     S = []
     S_norm = []
     alpha0_x = []
@@ -191,10 +200,10 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, l
     steps = []
     adc_timestep_size = times[1] - times[0]
     response_length = len(lin_resp)
-    for i, start_time in enumerate(tqdm(timesteps)):
+    for i, start_time in enumerate(tqdm(start_times)):
         for alpha_index in range(alphas.shape[0]):
             alpha_pair = alphas[alpha_index, :]
-            start_index = timestep_indices[i]
+            start_index = start_time_indices[i]
             dir_vector = np.array([
                 alpha_pair[4] - alpha_pair[0],
                 alpha_pair[5] - alpha_pair[1],
@@ -227,10 +236,6 @@ def transform(times, accels, timesteps, timestep_indices, alphas, sensors_pos, l
                     S_this_track += np.einsum(
                         'ij,ij->', expected_signal_from_sensor, signal_from_sensor
                     )
-
-                    #S_this_track += np.einsum(
-                    #    'ij,ij->', expected_signal_from_sensor, amp_noise[]
-                    #)
 
                     if np.any(np.isnan(S_this_track)): import pdb; pdb.set_trace()
 
