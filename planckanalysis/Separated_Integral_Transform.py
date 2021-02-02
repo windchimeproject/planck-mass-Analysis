@@ -63,10 +63,13 @@ def py_ang(v1, v2):
     return cosang
 
 
-def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_vals=[-1, -1], exit_vals=[-1, -1],
+def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_vals=[-5, -5], exit_vals=[-5, -5],
                             N_thetas=15, N_phis_at_eq=30, epsilon=0):
     if exit_Anl == True:
         theta_start = [entry_vals[0] * 180 / np.pi]
+
+
+        
     else:
         theta_start = np.linspace(0, 180, N_thetas)
 
@@ -78,10 +81,10 @@ def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_
     angles = []
     alphas = []
 
-    if entry_Anl == True and any(val < 0 for val in exit_vals) == True:
+    if entry_Anl == True and any(val == -5 for val in exit_vals) == True:
         raise ValueError(
             "You have indicated an entry spatial analysis but have not provided the truth exit theta and phi values. Please input with the form: exit_vals=[theta_exit_truth, phi_exit_truth].")
-    if exit_Anl == True and any(val < 0 for val in entry_vals) == True:
+    if exit_Anl == True and any(val == -5 for val in entry_vals) == True:
         raise ValueError(
             "You have indicated an exit spatial analysis but have not provided the truth entry theta and phi values. Please input with the form: entry_vals=[theta_entry_truth, phi_entry_truth].")
 
