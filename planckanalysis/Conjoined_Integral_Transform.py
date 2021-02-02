@@ -4,7 +4,7 @@ from numba import njit
 import numpy as np
 from scipy import signal
 from tqdm import tqdm, trange
-from Separated_Integral_Transform import signal_function
+from planckanalysis.separated_integral_transform import signal_function
 
 def transform(times, accels, start_times, start_time_indices, alphas, sensors_pos, lin_resp):
     '''Takes time series data as an input and generates a signal value based on
