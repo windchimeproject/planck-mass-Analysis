@@ -171,7 +171,7 @@ def adc_readout_to_accel(data, lookup_dict, sensitivity=1):
     return out
 
 
-def transform_temp(alphas, sensors_pos, lin_resp, adc_timestep_size=10 ** (-7)):
+def transform_temp(alphas, sensors_pos, lin_resp, adc_timestep_size=10 ** (-7), cylinder_cut_size=1):
     expected_signal_from_sensor = {"Alpha_num": [], "Signal": [], "cut_sensor_positions": [], "Sensor_nums": []}
 
     response_length = len(lin_resp)
@@ -213,7 +213,7 @@ def transform_temp(alphas, sensors_pos, lin_resp, adc_timestep_size=10 ** (-7)):
                 mod = np.linalg.norm(track_vec)
                 min_dist = np.linalg.norm(np.cross(entry_to_P, track_vec)) / mod
 
-            if min_dist < 0.5:
+            if min_dist < cylinder_cut_size:
                 vector_delta = np.zeros((n_steps, 4))
                 for j in range(n_steps):
                     vector_delta[j, 0] = (particle_pos_arr[j][0] - sensor_pos[0])
