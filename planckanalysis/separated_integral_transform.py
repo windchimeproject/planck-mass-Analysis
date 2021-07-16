@@ -62,7 +62,7 @@ def py_ang(v1, v2):
 
     return cosang
 
-
+#This is the original spatial alphas function
 def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_vals=[-5, -5], exit_vals=[-5, -5],
                             N_thetas=15, N_phis_at_eq=30, epsilon=0):
     if exit_Anl == True:
@@ -147,6 +147,148 @@ def Spatial_Analysis_alphas(vel, radius, entry_Anl=False, exit_Anl=False, entry_
                                 ])
     return np.array(alphas), np.array(angles)
 
+
+#Used for 2D parameter slicing method
+def Spatial_Analysis_alphas_slice(vel, radius, entry_theta, exit_theta, entry_phi, exit_phi, entry_vals, exit_vals, N_thetas, N_phis_at_eq, epsilon):
+    #Generates thetas to loop over for analysis (original N_thetas = 15)
+    if entry_theta == False:
+        theta_start = [entry_vals[0] * 180 / np.pi]
+    else:
+        theta_start = np.linspace(0, 180, N_thetas)
+
+    if exit_theta == False:
+        theta_end = [exit_vals[0] * 180 / np.pi]
+    else:
+        theta_end = np.linspace(0, 180, N_thetas)
+
+    angles = []
+    alphas = []
+
+    #if entry_theta == True or entry_phi == True and any(val == -5 for val in exit_vals) == True:
+        #raise ValueError(
+            #"You have indicated an entry spatial analysis but have not provided the truth exit theta and phi values. Please input with the form: exit_vals=[theta_exit_truth, phi_exit_truth].")
+    #if exit_theta == True or exit_phi == True and any(val == -5 for val in entry_vals) == True:
+        #raise ValueError(
+            #"You have indicated an exit spatial analysis but have not provided the truth entry theta and phi values. Please input with the form: entry_vals=[theta_entry_truth, phi_entry_truth].")
+
+    for vel_p in tqdm(vel):
+        for theta_entry in theta_start:
+            for theta_exit in theta_end:
+                if theta_exit > theta_entry + epsilon or theta_exit < theta_entry - epsilon:
+                    # The phi calcs below are dependent on the particular thetas considered to keep the spherical uniformity of the spatial analysis consideration
+                    if entry_phi == False:
+                        phi_start = [entry_vals[1] * 180 / np.pi]
+                    else:
+                        phi_start = np.linspace(-180, 180,
+                                                int(np.round(N_phis_at_eq * np.cos((theta_entry - 90) * np.pi / 180))))
+
+                    if len(phi_start) == 0:
+                        phi_start = [0]
+
+                    for phi_entry in phi_start:
+                        if exit_phi == False:
+                            phi_end = [exit_vals[1] * 180 / np.pi]
+                        else:
+                            phi_end = np.linspace(-180, 180, int(
+                                np.round(N_phis_at_eq * np.cos((theta_entry - 90) * np.pi / 180))))
+
+                        if len(phi_end) == 0:
+                            phi_end = [0]
+
+                        for phi_exit in phi_end:
+                            if phi_exit > phi_entry + epsilon or phi_exit < phi_entry - epsilon:
+                                x_0 = radius * np.sin(theta_entry * np.pi / 180) * np.cos(phi_entry * np.pi / 180)
+                                y_0 = radius * np.sin(theta_entry * np.pi / 180) * np.sin(phi_entry * np.pi / 180)
+                                z_0 = radius * np.cos(theta_entry * np.pi / 180)
+
+                                x_1 = radius * np.sin(theta_exit * np.pi / 180) * np.cos(phi_exit * np.pi / 180)
+                                y_1 = radius * np.sin(theta_exit * np.pi / 180) * np.sin(phi_exit * np.pi / 180)
+                                z_1 = radius * np.cos(theta_exit * np.pi / 180)
+
+                                length = np.sqrt(
+                                    (x_1 - x_0) ** 2 +
+                                    (y_1 - y_0) ** 2 +
+                                    (z_1 - z_0) ** 2
+                                )
+
+                                alphas.append([
+                                    x_0,
+                                    y_0,
+                                    z_0,
+                                    0,
+                                    x_1,
+                                    y_1,
+                                    z_1,
+                                    length / vel_p
+                                ])
+
+                                angles.append([
+                                    theta_entry * np.pi / 180,
+                                    theta_exit * np.pi / 180,
+                                    phi_entry * np.pi / 180,
+                                    phi_exit * np.pi / 180
+                                ])
+    return np.array(alphas), np.array(angles)
+
+#This function will set the conditions and then generate alphas for the 2P slices based on the analysis_parameter given, time_track, and whether a spatial analysis is needed (usually is)
+def Alpha_Generator_Function(analysis_parameter, time_track, spatial_analysis = True):
+    #Intialization same as done above
+    if spatial_analysis == False:
+        alphas = pint.Non_Spatial_Analysis_alphas(vel_array, entry_vecs, exit_vecs)
+        angles = []
+    
+    else: 
+        if 'Velocity' in analysis_parameter:
+            vel_array=[]
+            num_bin = 50
+            velocity_bins = np.linspace(1e5, 8e5, num_bin)
+            vel_array = velocity_bins[:-1] + np.diff(velocity_bins) / 2
+        else:
+            vel_array = [vel]
+
+        if 'Time' in analysis_parameter:
+            # Acceleration Settings: Analyzing the whole time parameter space
+            tm_steps = 2
+            tmstep_strt = n_pad_strt - 200
+            tmstep_end = n_pad_strt + 200
+        else:
+            # Acceleration Settings: Removing the padding and only considering the true entry time
+            tm_steps = len(time_track) - n_pad_strt - n_pad_end
+            tmstep_strt = n_pad_strt - 1
+            tmstep_end = len(time_track) - n_pad_end - 1
+
+        #Initialize logic for no spatial analysis
+        entry_theta = False 
+        exit_theta = False
+        entry_phi = False
+        exit_phi = False
+
+        entry_vals = [theta_entry_truth, phi_entry_truth]
+        exit_vals = [theta_exit_truth, phi_exit_truth]
+
+        #Tells the alphas function to create alphas using the parameters in analysis_parameter
+        if 'Theta_Entry' in analysis_parameter:
+            entry_theta = True
+            entry_vals[0] = -5
+
+        if 'Phi_Entry' in analysis_parameter:
+            entry_phi = True
+            entry_vals[1] = -5
+
+        if 'Theta_Exit' in analysis_parameter:
+            exit_theta = True
+            exit_vals[0] = -5
+
+        if 'Phi_Exit' in analysis_parameter:
+            exit_phi = True
+            exit_vals[1] = -5
+
+
+        #Set in here how many phis/thetas to be used in analysis (make sure N_phis_at_eq = 2*N_thetas since phi from -pi to pi, theta from 0 to pi)
+        alphas, angles = Spatial_Analysis_alphas_slice(vel_array, radius, entry_theta, exit_theta, entry_phi, exit_phi, entry_vals, exit_vals,
+                                    N_thetas=15, N_phis_at_eq=30, epsilon=0)
+
+    return alphas, angles
 
 def generate_adc_lookup_table(acceleration_bin_edges):
     '''Takes on an array of acceleration bin edges in order to create a dictionary with
